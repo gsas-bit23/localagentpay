@@ -22,11 +22,11 @@ LocalAgentPay turns a grocery request into local options + a NEAR Intents route:
 
 Fictional merchants, simulated confirmation.
 
-Demo + code: [PUBLIC_REPO_URL]
+Demo + code: https://github.com/gsas-bit23/localagentpay
 
 @NEARProtocol #NEARHackathon
 
-Attach your recorded demo, replace the repository placeholder, and check the final character count. This draft has not been posted.
+Attach your recorded demo, check the final character count. This draft has not been posted.
 
 ## Submission checklist
 

@@ -13,6 +13,7 @@ Verified November 13, 2026 against the local production build.
 | Quote expiry | Passed | Advancing browser time by 121 seconds exposes Refresh quote |
 | Input and errors | Passed | Invalid chat 400, unknown merchant 404, missing live recipient 422; browser renders error |
 | City and budget | Passed | Typed city accepted; groceries under $10 renders empty state |
+| Location permission denied | Passed | Browser displays denial message and typed-city form remains available |
 | Mobile | Passed | 390px viewport: document width does not exceed viewport; stacked merchant cards |
 | Production browser console | Passed for demo flow | Zero console messages after initial load, discovery, quote, and receipt |
 | NEAR token catalog | Reachable | GET /v0/tokens returns ETH/USDC on Ethereum, USDC on Base, wNEAR on NEAR |
@@ -21,3 +22,5 @@ Verified November 13, 2026 against the local production build.
 | On-chain transfer/merchant order | Outside prototype | No signing, funding, fulfillment, or settlement implemented |
 
 Media: `workspace.png`, `payment-preview.png`, `confirmation.png`, and `demo.webm` show the actual demo-mode production build. The recording is silent. API-error testing produces an expected browser network error for the deliberate HTTP 422 response.
+
+Publication: the source is public at https://github.com/gsas-bit23/localagentpay. The current GitHub credential lacks `workflow` scope, so CI is provided as `ci.yml.example` rather than enabled. Vercel rejected project creation on the matching team with HTTP 402 `resource_creation_blocked` (team fair-use limits); no hosted URL is claimed. The X post is prepared but not published, and no hackathon submission has been made.

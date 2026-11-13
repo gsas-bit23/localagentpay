@@ -2,6 +2,8 @@
 
 **Local living. Borderless payments.** A NEAR hackathon prototype that turns a natural-language errand into local merchant choices and a cross-chain payment preview.
 
+[Public source repository](https://github.com/gsas-bit23/localagentpay)
+
 > All merchants, prices, distances, reviews, and trust scores are fictional sample data. Confirmation is simulated in every mode. This app does not sign, transfer funds, place orders, or claim settlement.
 
 ![LocalAgentPay workspace](docs/workspace.png)

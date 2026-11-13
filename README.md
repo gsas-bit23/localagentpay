@@ -102,6 +102,8 @@ The lockfile pins resolved dependencies. The optional workflow in `docs/ci.yml.e
 
 The app also builds for Workers using Cloudflare's Vinext runtime. The original Next.js commands above remain available.
 
+`npm run typecheck` regenerates Next.js route definitions before checking types, so it works after either build pipeline.
+
 Deployed at **https://localagentpay.mateen-nibtap.workers.dev**. The public browser flow and API endpoints were verified after deployment. [View the deployed receipt screenshot](docs/cloudflare-live.png).
 
 ```sh

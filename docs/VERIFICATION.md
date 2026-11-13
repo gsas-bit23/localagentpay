@@ -32,6 +32,7 @@ Live URL: **https://localagentpay.mateen-nibtap.workers.dev**
 - Worker: `localagentpay`; version: `d89baa60-d9a9-429b-94e9-6a3b3c82f8cc`.
 - Built with Vinext and Cloudflare's Vite plugin; deployed with Wrangler using the existing authenticated account.
 - Seven tests, TypeScript, and the Vinext production build passed. Original Next.js scripts remain available.
+- The original Next.js production build also passed after migration. Type checking regenerates route definitions to avoid stale generated types when switching between Next.js and Vinext.
 - The built local Worker passed the full browser flow with zero console errors or warnings.
 - The public URL returned HTTP 200. The deployed chat API returned 3 grocery choices; its quote API returned 0.024120 demo ETH on Ethereum → 48.00 USDC on Base.
 - The public browser completed chat → merchant selection → quote → simulated confirmation with zero console errors or warnings. Screenshot: `cloudflare-live.png`.

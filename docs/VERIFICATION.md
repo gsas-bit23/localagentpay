@@ -56,3 +56,19 @@ The earlier Vercel deployment attempt was blocked by that team's fair-use restri
 The official sources and limitations are documented in `COMMERCE.md`. No real purchase was performed during verification.
 
 Deployed update: version `da506bc0-8dad-4b49-a1fe-e7b60ad9c223` at the same public Cloudflare URL. The public homepage and `/demo` return HTTP 200. Public routing API checks passed for Pakistan groceries, US crypto shopping, UAE hotel/NEAR, the empty crypto-only grocery case, and UK domain registration. The public browser rendered Newegg's regional handoff and Travala's direct NEAR option with zero console errors or warnings. Screenshot: `route-live.png`.
+
+## Map workspace update — November 14, 2026
+
+- MapLibre GL JS 6.18.0 + OpenFreeMap/OSM background with persistent map instance, floating merchant/payment panels, and mobile bottom panel. No Google key or billing required.
+- All 25 tests pass, including coordinate order/precision, country camera bounds, city-center labeling, Photon normalization/filtering/deduplication, invalid searches, and closed GPS accuracy geometry. TypeScript and production build checks pass.
+- Browser country selection moves to Pakistan (zoom 5.20, center 69.355 / 30.599), and a Dubai hotel request focuses Dubai at city zoom and opens Travala's direct NEAR steps. Only one map canvas remains mounted.
+- Actual submitted Photon searches return real map listings. Local Mazar-e-Quaid search returns six listings; explicit Tesco/London store discovery returns six actual listings. Provider recommendations remain separate from physical listings.
+- Device geolocation tested with mocked public city points and ±35 m / ±80 m reported accuracy. Marker, accuracy text, and the uncertainty circle render. Desktop-to-mobile resizing keeps the point visible. A mocked permission-denied callback displays the recovery message; manual coordinates remain usable. No user's GPS was recorded.
+- Mobile 390×844: panel expansion/collapse and manual-coordinate fallback pass; document width is 390px. Attribution stays above the panel. Camera padding adapts to viewport changes.
+- Public deployment browser passes map load → Dubai request → Travala details → correct provider handoff. Zoom, recenter, and Light layer switch pass. Zero console errors. The upstream map style emits nonfatal road-shield filter warnings for missing numeric tile fields.
+- Public `/api/map/search` returns HTTP 200 with six normalized Pakistan listings; an invalid short query returns 400. `/demo` still returns 200.
+- New screenshots: `map-workspace.png`, `map-mobile.png`, `map-gps.png`, `map-live.png`. See `MAPS.md` for service limits, attribution, location privacy, worker preparation, and future provider replacement.
+
+Checkout execution and payments remain unchanged: provider handoffs and the separate simulated payment sandbox. No funds or real orders were submitted.
+
+Final map deployment: Cloudflare Worker version `08170b48-3cf4-4729-aa72-9aa0297157df`, at the same public URL. Final local checks also cover camera padding after viewport changes and GPS accuracy geometry after tile loading.

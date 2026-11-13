@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./commerce.css";
 export const metadata: Metadata = {
   title: "LocalAgentPay — Local living. Borderless payments.",

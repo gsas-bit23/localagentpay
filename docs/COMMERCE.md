@@ -70,3 +70,11 @@ The registry and ranking are implemented. Provider inventory/pricing APIs, cart 
 - [foodpanda Partner API](https://developer.foodpanda.com/api-specifications): vendor-side API scope and credential requirements.
 
 Each registry entry also retains its own official storefront URL. A directory review is not a live inventory, eligibility, reputation, or lowest-price check. Recheck payment documentation and checkout capabilities before enabling actual funding.
+
+## Map context
+
+The map workspace synchronizes country/city selection with its camera. Merchant cards represent provider coverage, not branch addresses. Explicit physical-store discovery uses actual OpenStreetMap listings and does not imply verified payment acceptance. See [MAPS.md](MAPS.md).
+
+## Map context
+
+The map workspace synchronizes country/city selection with its camera. Merchant cards represent provider coverage, not branch addresses. Explicit physical-store discovery uses actual OpenStreetMap listings and does not imply verified payment acceptance. See [MAPS.md](MAPS.md).

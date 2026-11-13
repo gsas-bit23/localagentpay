@@ -12,3 +12,5 @@ output/playwright/
 dist/
 .dev.vars*
 .vinext/
+
+public/maplibre/

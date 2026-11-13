@@ -1,6 +1,6 @@
 # LocalAgentPay
 
-**Local living. Borderless payments.** A country-aware commerce route finder: describe a purchase, match real regional storefronts, and see the documented payment path before continuing with a provider.
+**Local living. Borderless payments.** A map-first, country-aware commerce route finder: describe a purchase, match real regional storefronts, and see the documented payment path before continuing with a provider.
 
 [Public source repository](https://github.com/gsas-bit23/localagentpay)
 
@@ -8,9 +8,9 @@
 
 > The home page recommends real providers from a curated directory across 12 countries. It does not query live product inventory, calculate final carts, execute checkout, or compare live prices. The separate `/demo` payment sandbox uses fictional merchants and simulated confirmation. No funds or orders are submitted by this app.
 
-![LocalAgentPay merchant route finder](docs/route-finder.png)
+![LocalAgentPay map workspace](docs/map-workspace.png)
 
-[Merchant route example](docs/route-shopping.png) · [Mobile route details](docs/route-mobile.png)
+[Live payment route](docs/map-live.png) · [Mobile map](docs/map-mobile.png) · [GPS accuracy example](docs/map-gps.png)
 
 [Watch the original sandbox recording](docs/demo.webm) · [Payment preview screenshot](docs/payment-preview.png) · [Simulated receipt](docs/confirmation.png)
 
@@ -33,6 +33,10 @@ Open http://127.0.0.1:3000. No API keys or wallet are needed for merchant routin
 Try **Book a hotel in Dubai and pay in NEAR**, **Buy headphones in the US using crypto**, or **Recharge my mobile in Nigeria**. The crypto-only filter excludes stores without a documented crypto checkout route. Voucher suggestions are excluded.
 
 The directory includes Pakistan, India, the US, the UK, the UAE, Germany, Singapore, Nigeria, Canada, Australia, France, and Japan. Categories are groceries, food delivery, shopping, travel, mobile/connectivity, local services, and domains/hosting. Country coverage does not imply every city, item, or payment method is available. See [the commerce routing guide](docs/COMMERCE.md).
+
+## Interactive map workspace
+
+MapLibre + OpenStreetMap-based OpenFreeMap tiles provide the live full-screen background without Google billing. Floating panels contain country selection, submitted address/place search, optional device location, and merchant/payment routes. Country changes and recognized city requests animate the camera; the mobile interface uses an expandable bottom panel. Online providers are never pinned as invented physical shops. See [the map guide](docs/MAPS.md) for providers, accuracy, privacy, and configuration.
 
 ## Payment sandbox
 
@@ -88,14 +92,17 @@ The server uses the OpenAI-compatible client requested by the project brief. It 
 ## Architecture
 
 ```text
-app/page.tsx                  Country-aware merchant route finder
+app/page.tsx                  Map-first merchant route finder
 app/demo/page.tsx             Original simulated payment sandbox
 app/api/routes/route.ts       Validate request → country/category filter → ranked routes
 app/api/chat/route.ts         Validate request → optional NEAR AI tool → options
 app/api/location/route.ts     Structured sample location/options endpoint
 app/api/quote/route.ts        Merchant lookup → explicit demo or 1Click dry-run
 components/Chat.tsx           Chat, location, choice, and confirmation state
-components/RouteFinder.tsx    Country, category, crypto filter, routes, evidence, handoffs
+components/RouteFinder.tsx    Floating panels, location and merchant routing state
+components/MapCanvas.tsx      Persistent MapLibre map, animated camera, markers, accuracy
+app/api/map/search/route.ts   Validated submitted Photon location searches
+lib/maps/                    Camera presets, coordinate handling, Photon normalization
 components/OptionsList.tsx    Selectable fictional merchants
 components/PaymentCard.tsx    Asset, chains, fee, expiry, simulated receipt
 lib/agent.ts                 System prompt, function schema, deterministic fallback
@@ -107,7 +114,7 @@ tests/core.test.ts            Amount precision, filtering, input, and mode check
 tests/routing.test.ts         Country isolation, crypto eligibility, ranking, and unknown prices
 ```
 
-In the sandbox, the browser's chat request includes the current location, so it does not need to call the standalone location endpoint first. Sharing approximate coordinates is optional and does not alter fixture distances. No location is persisted; the server has no database. Geolocation requires HTTPS or localhost and permission; denial leaves typed-city input available. The route finder uses typed country/city context and does not request browser coordinates.
+In the sandbox, the browser's chat request includes the current location, so it does not need to call the standalone location endpoint first. Sharing approximate coordinates is optional and does not alter fixture distances. No location is persisted; the server has no database. Geolocation requires HTTPS or localhost and permission; denial leaves typed-city input available. The map workspace optionally uses device location with a reported accuracy circle. Country/city context is used for merchant routing. Submitted address searches and explicit nearby store searches use Photon; map tiles reflect the visible area. See [map setup and privacy](docs/MAPS.md).
 
 ## Check and build
 

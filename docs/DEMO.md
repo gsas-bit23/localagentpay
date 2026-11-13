@@ -1,5 +1,9 @@
 # LocalAgentPay demo and submission notes
 
+## Current map workspace
+
+Start by selecting Pakistan and then Japan to show the animated map. Search `24.8546842, 67.0207055` for coordinate precision, or use device location and explain the reported uncertainty. On mobile, expand/collapse the floating bottom panel. Continue with merchant routing below. Map listings and online provider coverage are distinct.
+
 ## Current merchant route finder
 
 The home page now recommends real provider handoffs across 12 countries and seven categories; it does not execute their checkout APIs. The original payment sandbox remains at `/demo`.
@@ -9,7 +13,7 @@ Suggested current recording:
 1. Ask **Weekly groceries in Karachi under PKR 5000**. Show foodpanda / pandamart and its explicit “NEAR not connected” status. The budget is context, not a claim about live cart pricing.
 2. Ask **Book a hotel in Dubai and pay in NEAR**. Show Travala, the public payment source, and the direct NEAR invoice steps.
 3. Ask **Buy headphones in the US using crypto**. Show Newegg US and Uquid. Highlight Newegg's eligible-item and desktop-checkout restrictions.
-4. Choose **Only crypto-compatible checkout**, then ask for groceries in Pakistan. Show the empty state instead of a fabricated route.
+4. Choose **Crypto options only**, then ask for groceries in Pakistan. Show the empty state instead of a fabricated route.
 5. Ask for flights or domain registration. Show Alternative Airlines or Namecheap's distinct account-funding flow.
 6. Open `/demo` separately if demonstrating the SDK quote and simulated receipt. Do not present a sandbox quote as a real provider invoice.
 

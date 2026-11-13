@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   Check,
+  ChevronDown,
   ChevronRight,
-  CircleHelp,
+  Crosshair,
   ExternalLink,
   Globe2,
   Info,
@@ -16,13 +18,14 @@ import {
   Navigation,
   Plane,
   Route,
+  Search,
   ShieldCheck,
   ShoppingBag,
   Smartphone,
   Sparkles,
   UtensilsCrossed,
-  Wallet,
   Wrench,
+  X,
 } from "lucide-react";
 import {
   countries,
@@ -31,6 +34,15 @@ import {
   type CommerceCategory,
 } from "@/lib/commerce/config";
 import type { CommerceResult, CommerceRoute } from "@/lib/commerce/types";
+import {
+  countryViews,
+  knownCity,
+  locationsBounds,
+  parseCoordinates,
+  type MapLocation,
+  type MapTarget,
+} from "@/lib/maps/geo";
+import MapCanvas from "./MapCanvas";
 
 const icons = {
   digital: Globe2,
@@ -44,7 +56,7 @@ const icons = {
 const examples = [
   {
     text: "Weekly groceries in Karachi under PKR 5000",
-    label: "Groceries in Pakistan",
+    label: "Groceries in Karachi",
     icon: Leaf,
   },
   {
@@ -59,11 +71,18 @@ const examples = [
   },
   {
     text: "Recharge my mobile in Nigeria",
-    label: "Mobile top-up in Nigeria",
+    label: "Mobile in Nigeria",
     icon: Smartphone,
   },
 ];
-
+const branchBrands: Record<string, string> = {
+  "walmart-us": "Walmart",
+  "tesco-gb": "Tesco",
+  "rewe-de": "REWE",
+  "fairprice-sg": "FairPrice",
+  "woolworths-au": "Woolworths",
+  "carrefour-fr": "Carrefour",
+};
 function routeStatus(route: CommerceRoute) {
   return route.payment === "near"
     ? "Direct NEAR option"
@@ -73,7 +92,6 @@ function routeStatus(route: CommerceRoute) {
         ? "Provider discovery"
         : "Conventional checkout";
 }
-
 export default function RouteFinder() {
   const [country, setCountry] = useState<CountryCode | "">("");
   const [city, setCity] = useState("");
@@ -84,36 +102,100 @@ export default function RouteFinder() {
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [lastQuery, setLastQuery] = useState("");
-  const resultsRef = useRef<HTMLElement>(null);
-  const detailRef = useRef<HTMLElement>(null);
-  const selected = result?.routes.find((r) => r.id === selectedId);
-
-  function showOnMobile(target: "results" | "detail") {
-    if (window.innerWidth > 820) return;
-    requestAnimationFrame(() =>
-      (target === "results" ? resultsRef : detailRef).current?.scrollIntoView({
-        block: "start",
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-      }),
-    );
+  const [tab, setTab] = useState<"explore" | "route">("explore");
+  const [expanded, setExpanded] = useState(false);
+  const [location, setLocation] = useState<MapLocation>();
+  const [locationText, setLocationText] = useState("");
+  const [places, setPlaces] = useState<MapLocation[]>([]);
+  const [locationBusy, setLocationBusy] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [target, setTarget] = useState<MapTarget>({
+    id: 0,
+    kind: "world",
+    label: "Your next stop starts here",
+    center: [35, 25],
+    zoom: 2.4,
+  });
+  const requestId = useRef(0);
+  const locationRequestId = useRef(0);
+  const locationCache = useRef(new Map<string, MapLocation[]>());
+  const scroll = useRef<HTMLDivElement>(null);
+  const selected = result?.routes.find((route) => route.id === selectedId);
+  const activeMarket = countries.find(
+    (item) => item.code === (result?.country || country),
+  );
+  function focusCountry(code: CountryCode) {
+    const market = countries.find((item) => item.code === code)!;
+    setTarget((value) => ({
+      id: value.id + 1,
+      kind: "country",
+      label: market.name,
+      ...countryViews[code],
+    }));
   }
-
   function invalidate() {
+    requestId.current++;
+    setBusy(false);
     setResult(undefined);
     setSelectedId("");
     setError("");
+    setTab("explore");
+  }
+  function changeCountry(code: CountryCode | "") {
+    invalidate();
+    locationRequestId.current++;
+    setLocationBusy(false);
+    setLocating(false);
+    setCountry(code);
+    setCity("");
+    setLocation(undefined);
+    setPlaces([]);
+    setLocationText("");
+    setLocationError("");
+    if (code) focusCountry(code);
+    else
+      setTarget((value) => ({
+        id: value.id + 1,
+        kind: "world",
+        label: "Explore the world",
+        center: [35, 25],
+        zoom: 2.4,
+      }));
+  }
+  function pickLocation(place: MapLocation) {
+    locationRequestId.current++;
+    setLocationBusy(false);
+    setLocating(false);
+    const code = countries.find(
+      (item) => item.code === place.countryCode,
+    )?.code;
+    if (place.city !== city || (code && country !== code)) invalidate();
+    if (code && country !== code) {
+      setCountry(code);
+    }
+    setLocation(place);
+    setCity(place.city || "");
+    setLocationText(place.name);
+    setLocationError("");
+    setTarget((value) => ({
+      id: value.id + 1,
+      kind: "location",
+      label: place.name,
+      center: place.coordinates,
+      bounds: place.bounds,
+      zoom: place.source === "city-center" ? 11 : 16,
+    }));
   }
   async function search(text = query, example = false) {
     if (busy || text.trim().length < 3) return;
+    const id = ++requestId.current;
     setBusy(true);
     setError("");
     setResult(undefined);
     setSelectedId("");
+    setTab("explore");
     setQuery(text);
-    setLastQuery(text);
     try {
       const response = await fetch("/api/routes", {
         method: "POST",
@@ -132,451 +214,655 @@ export default function RouteFinder() {
         throw new Error(
           data.error || "Couldn't find routes. Please try again.",
         );
+      if (id !== requestId.current) return;
       const next = data as CommerceResult;
       setResult(next);
       setSelectedId(next.routes[0]?.id || "");
-      showOnMobile("results");
+      const requestedCity = knownCity(text, next.country);
+      const center = requestedCity || knownCity(city, next.country);
+      const keepFocus =
+        location &&
+        (location.countryCode === next.country ||
+          (!location.countryCode && country === next.country));
+      if (example) {
+        setCountry("");
+        setCity("");
+        setCategory("");
+      }
+      if (
+        center &&
+        (example ||
+          !keepFocus ||
+          (requestedCity && requestedCity.city !== location?.city))
+      ) {
+        locationRequestId.current++;
+        setLocationBusy(false);
+        setLocating(false);
+        setLocationError("");
+        setLocation(center);
+        setLocationText(center.name);
+        setPlaces([]);
+        setTarget((value) => ({
+          id: value.id + 1,
+          kind: "location",
+          label: center.name,
+          center: center.coordinates,
+          zoom: 11,
+        }));
+      } else if (example || !keepFocus) {
+        locationRequestId.current++;
+        setLocationBusy(false);
+        setLocating(false);
+        setLocationError("");
+        setLocationText("");
+        setLocation(undefined);
+        setPlaces([]);
+        focusCountry(next.country);
+      }
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Couldn't find routes. Please try again.",
-      );
+      if (id === requestId.current)
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Couldn't find routes. Please try again.",
+        );
     } finally {
-      setBusy(false);
+      if (id === requestId.current) setBusy(false);
     }
   }
-
+  async function findPlaces(text = locationText, near = false) {
+    if (text.trim().length < 2 || locationBusy) return;
+    const id = ++locationRequestId.current;
+    setLocating(false);
+    setLocationError("");
+    const coordinates = parseCoordinates(text);
+    if (coordinates) {
+      setPlaces([]);
+      pickLocation({
+        id: `coordinates-${coordinates.join(",")}`,
+        name: "Selected coordinates",
+        address: `${coordinates[1].toFixed(5)}, ${coordinates[0].toFixed(5)} · latitude, longitude`,
+        coordinates,
+        source: "coordinates",
+      });
+      return;
+    }
+    const market = countries.find(
+      (item) =>
+        item.name.toLowerCase() === text.trim().toLowerCase() ||
+        item.code.toLowerCase() === text.trim().toLowerCase(),
+    );
+    if (market && !near) {
+      changeCountry(market.code);
+      return;
+    }
+    const center = knownCity(text, country || undefined);
+    if (
+      center &&
+      text.trim().toLowerCase() === center.name.toLowerCase() &&
+      !near
+    ) {
+      setPlaces([]);
+      pickLocation(center);
+      return;
+    }
+    setLocationBusy(true);
+    try {
+      const params = new URLSearchParams({ q: text.trim() });
+      const code = country || result?.country;
+      if (code) params.set("country", code);
+      if (near && location) {
+        params.set("lng", String(location.coordinates[0]));
+        params.set("lat", String(location.coordinates[1]));
+      }
+      const key = params.toString();
+      let found = locationCache.current.get(key);
+      if (!found) {
+        const response = await fetch(`/api/map/search?${params}`, {
+          signal: AbortSignal.timeout(13000),
+        });
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(
+            data.error ||
+              "Location search is unavailable. Try a city or coordinates.",
+          );
+        found = data.places as MapLocation[];
+        if (locationCache.current.size >= 20)
+          locationCache.current.delete(
+            locationCache.current.keys().next().value!,
+          );
+        locationCache.current.set(key, found);
+      }
+      if (id !== locationRequestId.current) return;
+      setPlaces(found);
+      if (!found.length)
+        setLocationError(
+          "No map listings found here. Try a fuller address, another city, or latitude, longitude.",
+        );
+      else
+        setTarget((value) => ({
+          id: value.id + 1,
+          kind: "places",
+          label: `${found.length} map ${found.length === 1 ? "match" : "matches"}`,
+          bounds: locationsBounds(found),
+        }));
+    } catch (e) {
+      if (id === locationRequestId.current)
+        setLocationError(
+          e instanceof Error ? e.message : "Location search is unavailable.",
+        );
+    } finally {
+      if (id === locationRequestId.current) setLocationBusy(false);
+    }
+  }
+  function locate() {
+    if (locating) return;
+    setLocationError("");
+    if (!navigator.geolocation) {
+      setLocationError(
+        "This browser doesn't support location. Search an address or enter coordinates instead.",
+      );
+      return;
+    }
+    const id = ++locationRequestId.current;
+    setLocationBusy(false);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (id !== locationRequestId.current) return;
+        setLocating(false);
+        setPlaces([]);
+        pickLocation({
+          id: "device-location",
+          name: "Your device location",
+          address: `Device estimate · accuracy ±${Math.round(position.coords.accuracy)} m`,
+          coordinates: [position.coords.longitude, position.coords.latitude],
+          accuracy: position.coords.accuracy,
+          source: "gps",
+        });
+      },
+      (error) => {
+        if (id !== locationRequestId.current) return;
+        setLocating(false);
+        setLocationError(
+          error.code === 1
+            ? "Location permission is off. Allow it in your browser, or search an address or coordinates below."
+            : "Couldn't get your device location. Search an address or coordinates instead.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
+  }
+  function selectRoute(route: CommerceRoute) {
+    setSelectedId(route.id);
+    setTab("route");
+    scroll.current?.scrollTo({ top: 0 });
+    if (location)
+      setTarget((value) => ({
+        id: value.id + 1,
+        kind: "location",
+        label: location.name,
+        center: location.coordinates,
+        bounds: location.bounds,
+        zoom: location.source === "city-center" ? 11 : 16,
+      }));
+    else if (result) focusCountry(result.country);
+  }
   return (
-    <div className="commerce-shell">
-      <header className="commerce-header">
-        <a href="/" className="commerce-brand">
-          <span>
-            <ArrowUpRight size={22} />
-          </span>
-          localagent<span>pay</span>
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="/" aria-current="page">
-            Find a route
-          </a>
-          <a href="/demo">
-            Payment sandbox <ArrowUpRight size={13} />
-          </a>
-          <a href="https://intents.near.org/" target="_blank" rel="noreferrer">
-            NEAR Intents <ExternalLink size={13} />
-          </a>
-        </nav>
-        <span className="commerce-live">
-          <i /> Country-aware commerce
+    <div className={`map-workspace ${expanded ? "panel-expanded" : ""}`}>
+      <MapCanvas
+        target={target}
+        location={location}
+        places={places}
+        onPick={pickLocation}
+        onLocate={locate}
+        locating={locating}
+      />
+      <div className="map-topline">
+        <span>
+          <Globe2 size={14} /> LOCAL LIVING. BORDERLESS PAYMENTS.
         </span>
-      </header>
-      <main className="commerce-main">
-        <div className="commerce-hero">
-          <div>
-            <span className="commerce-eyebrow">
-              <Globe2 size={14} /> EVERYDAY PURCHASES. DIFFERENT COUNTRIES.
+        <a href="https://intents.near.org/" target="_blank" rel="noreferrer">
+          Powered by possibilities <ArrowUpRight size={14} />
+        </a>
+      </div>
+      <aside className="map-app-panel" aria-label="Merchant route finder">
+        <button
+          className="sheet-handle"
+          onClick={() => setExpanded((value) => !value)}
+          aria-label={expanded ? "Collapse app panel" : "Expand app panel"}
+          aria-expanded={expanded}
+        >
+          <span />
+        </button>
+        <header className="map-app-header">
+          <a href="/" className="commerce-brand">
+            <span className="brand-mark">
+              <Navigation size={21} fill="currentColor" />
             </span>
-            <h1>
-              Find the right merchant.
-              <br />
-              <span>Then find your way to pay.</span>
-            </h1>
-            <p>
-              Real regional storefronts, direct purchases, and a clear payment
-              path.
-              <br />
-              Tell us what you need and where you need it.
-            </p>
-          </div>
-          <div className="commerce-stamp" aria-hidden="true">
-            <Globe2 size={66} strokeWidth={1} />
-            <span>
-              LOCAL NEEDS
-              <br />
-              GLOBAL POSSIBILITIES
-            </span>
-          </div>
+            localagent<span className="pay-word">pay</span>
+            <span className="beta-label">BETA</span>
+          </a>
+          <a
+            className="sandbox-link"
+            href="/demo"
+            title="Simulated payment sandbox"
+          >
+            <Route size={16} />
+            <span>Sandbox</span>
+          </a>
+        </header>
+        <div className="map-panel-tabs">
+          <button
+            aria-pressed={tab === "explore"}
+            onClick={() => setTab("explore")}
+          >
+            <Search size={15} /> Explore
+          </button>
+          <button
+            aria-pressed={tab === "route"}
+            onClick={() => setTab("route")}
+          >
+            <Route size={15} /> Payment route {selected ? <i /> : null}
+          </button>
         </div>
-        <div className="commerce-layout">
-          <section className="finder-main" aria-label="Merchant route finder">
-            <form
-              className="finder-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void search();
-              }}
-            >
-              <div className="finder-title">
-                <span className="finder-avatar">
-                  <Sparkles size={21} />
+        <div className="map-panel-scroll" ref={scroll}>
+          {tab === "explore" ? (
+            <>
+              <div className="map-intro">
+                <span className="commerce-eyebrow">
+                  YOUR WORLD, WITHIN REACH
                 </span>
-                <div>
-                  <h2>What are we getting done?</h2>
-                  <p>
-                    We match the request, country, and documented payment
-                    options.
-                  </p>
-                </div>
-                <span className="direct-tag">
-                  <Check size={12} /> No voucher suggestions
-                </span>
+                <h1>
+                  Go local.
+                  <br />
+                  <span>Pay borderless.</span>
+                </h1>
+                <p>
+                  Find a merchant. Discover the best available path from your
+                  NEAR to your next purchase.
+                </p>
               </div>
-              <label htmlFor="commerce-request" className="sr-only">
-                Describe your purchase
-              </label>
-              <textarea
-                id="commerce-request"
-                placeholder="Find groceries in Karachi, book a hotel in Dubai, or buy headphones in the US…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                minLength={3}
-                maxLength={1000}
-                required
-                disabled={busy}
-              />
-              <div className="finder-fields">
-                <label>
-                  <span>
-                    <Globe2 size={13} /> Country
-                  </span>
+              <div className="map-location-section">
+                <label className="field-label" htmlFor="country">
+                  Where are we headed?
+                </label>
+                <div className="country-field">
+                  <Globe2 size={17} />
                   <select
-                    aria-label="Country"
+                    id="country"
                     value={country}
-                    onChange={(e) => {
-                      setCountry(e.target.value as CountryCode | "");
-                      invalidate();
-                    }}
-                    disabled={busy}
+                    onChange={(event) =>
+                      changeCountry(event.target.value as CountryCode | "")
+                    }
                   >
-                    <option value="">Choose or mention in request</option>
-                    {countries.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.name}
+                    <option value="">Choose a country, or ask below</option>
+                    {countries.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.name}
                       </option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  <span>
-                    <MapPin size={13} /> City <small>optional</small>
-                  </span>
+                  <ChevronDown size={15} />
+                </div>
+                <form
+                  className="location-search"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void findPlaces();
+                  }}
+                >
+                  <MapPin size={17} />
                   <input
-                    aria-label="City"
-                    value={city}
-                    onChange={(e) => {
-                      setCity(e.target.value);
-                      invalidate();
-                    }}
-                    maxLength={80}
-                    disabled={busy}
-                    placeholder="Delivery city or service area"
+                    aria-label="City, address or coordinates"
+                    placeholder="City, address or lat, lng"
+                    value={locationText}
+                    onChange={(event) => setLocationText(event.target.value)}
+                    maxLength={160}
                   />
-                </label>
-                <label>
-                  <span>Category</span>
-                  <select
-                    aria-label="Category"
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value as CommerceCategory | "");
-                      invalidate();
-                    }}
-                    disabled={busy}
+                  <button
+                    aria-label="Search map locations"
+                    disabled={locationBusy || locationText.trim().length < 2}
                   >
-                    <option value="">Detect from request</option>
-                    {commerceCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
+                    {locationBusy ? (
+                      <LoaderCircle size={17} className="spin" />
+                    ) : (
+                      <Search size={17} />
+                    )}
+                  </button>
+                </form>
+                <div className="location-actions">
+                  <button onClick={locate} disabled={locating}>
+                    <Crosshair size={13} />
+                    {locating ? "Locating…" : "Use device location"}
+                  </button>
+                  <span>Search when you’re ready</span>
+                </div>
+                {locationError ? (
+                  <p className="map-message error" role="alert">
+                    {locationError}
+                  </p>
+                ) : null}
+                {places.length ? (
+                  <div
+                    className="place-results"
+                    aria-label="Map search results"
+                  >
+                    {places.map((place, index) => (
+                      <button
+                        key={place.id}
+                        onClick={() => pickLocation(place)}
+                      >
+                        <span>{index + 1}</span>
+                        <div>
+                          <strong>{place.name}</strong>
+                          <small>
+                            {place.address || "OpenStreetMap listing"}
+                          </small>
+                        </div>
+                        <ArrowUpRight size={14} />
+                      </button>
                     ))}
-                  </select>
-                </label>
+                    <p>
+                      OpenStreetMap listings · payment acceptance and stock
+                      unverified
+                    </p>
+                  </div>
+                ) : null}
               </div>
-              <div className="finder-actions">
-                <label className="crypto-filter">
-                  <input
-                    type="checkbox"
-                    checked={cryptoOnly}
-                    onChange={(e) => {
-                      setCryptoOnly(e.target.checked);
+              <form
+                className="purchase-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void search();
+                }}
+              >
+                <label htmlFor="purchase" className="field-label">
+                  What do you need?
+                </label>
+                <div className="purchase-input">
+                  <textarea
+                    id="purchase"
+                    placeholder="A hotel in Dubai, paid in NEAR…"
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
                       invalidate();
                     }}
-                    disabled={busy}
+                    maxLength={500}
+                    rows={2}
                   />
-                  <span>Only crypto-compatible checkout</span>
-                </label>
+                  <Sparkles size={18} />
+                </div>
+                <div className="purchase-filters">
+                  <select
+                    aria-label="Purchase category"
+                    value={category}
+                    onChange={(event) => {
+                      setCategory(event.target.value as CommerceCategory | "");
+                      invalidate();
+                    }}
+                  >
+                    <option value="">All categories</option>
+                    {commerceCategories.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={cryptoOnly}
+                      onChange={(event) => {
+                        setCryptoOnly(event.target.checked);
+                        invalidate();
+                      }}
+                    />
+                    Crypto options only
+                  </label>
+                </div>
                 <button
                   className="find-route-button"
-                  type="submit"
                   disabled={busy || query.trim().length < 3}
                 >
                   {busy ? (
-                    <>
-                      <LoaderCircle size={16} className="spin" /> Finding
-                      routes…
-                    </>
+                    <LoaderCircle size={17} className="spin" />
                   ) : (
-                    <>
-                      Find my route <ArrowRight size={17} />
-                    </>
+                    <Route size={17} />
                   )}
+                  <span>{busy ? "Finding your route…" : "Find my route"}</span>
+                  <ArrowRight size={18} />
                 </button>
-              </div>
-            </form>
-            {!result && !busy ? (
-              <div className="finder-examples">
-                <span>TRY SOMETHING EVERYDAY</span>
-                <div>
-                  {examples.map((example) => (
-                    <button
-                      key={example.label}
-                      onClick={() => void search(example.text, true)}
-                    >
-                      <example.icon size={16} />
-                      {example.label}
-                      <ArrowUpRight size={13} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {error ? (
-              <div className="finder-error" role="alert">
-                <CircleHelp size={19} />
-                <div>
-                  <strong>Let's refine that request.</strong>
-                  <p>{error}</p>
-                  <button
-                    onClick={() => void search(lastQuery)}
-                    disabled={busy}
-                  >
-                    Try again <ArrowRight size={13} />
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {busy ? (
-              <div className="finder-loading" role="status">
-                <LoaderCircle size={25} className="spin" />
-                <h3>Matching the merchant and payment path</h3>
-                <p>Checking country coverage and direct purchase options.</p>
-              </div>
-            ) : null}
-            {result ? (
-              <section
-                ref={resultsRef}
-                className="finder-results"
-                aria-live="polite"
-              >
-                <div className="finder-results-heading">
-                  <div>
-                    <span className="commerce-eyebrow">
-                      YOUR AVAILABLE PATHS
-                    </span>
-                    <h2>
-                      {
-                        commerceCategories.find((c) => c.id === result.category)
-                          ?.name
-                      }{" "}
-                      in {result.countryName}
-                    </h2>
+              </form>
+              {error ? (
+                <p className="map-message error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              {result ? (
+                <section
+                  className="map-merchant-results"
+                  aria-label="Merchant matches"
+                  aria-live="polite"
+                >
+                  <div className="results-heading">
+                    <div>
+                      <span className="commerce-eyebrow">
+                        YOUR LOCAL OPTIONS
+                      </span>
+                      <h2>{result.countryName}</h2>
+                    </div>
+                    <span>{result.routes.length} matches</span>
                   </div>
-                  <span className="routes-count">
-                    {result.routes.length}{" "}
-                    {result.routes.length === 1 ? "route" : "routes"}
-                  </span>
-                </div>
-                <p className="finder-summary">{result.message}</p>
-                {result.budget ? (
-                  <div className="budget-note">
-                    <Wallet size={14} /> Your budget: {result.budget.currency}{" "}
-                    {new Intl.NumberFormat("en-US").format(
-                      result.budget.amount,
-                    )}
-                    <span>
-                      Final totals checked on provider; not filtered by live
-                      price.
-                    </span>
-                  </div>
-                ) : null}
-                {result.routes.length ? (
-                  <div className="route-list">
-                    {result.routes.map((route, index) => (
+                  <p className="results-message">{result.message}</p>
+                  {result.routes.length ? (
+                    result.routes.map((route, index) => (
                       <RouteOption
                         key={route.id}
                         route={route}
                         index={index}
                         selected={selectedId === route.id}
-                        onSelect={() => {
-                          setSelectedId(route.id);
-                          showOnMobile("detail");
-                        }}
+                        onSelect={() => selectRoute(route)}
                       />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="no-routes">
-                    <Navigation size={27} />
-                    <h3>No matching route in this directory yet.</h3>
-                    <p>
-                      {cryptoOnly
-                        ? "Conventional merchants may still serve this request. Turn off the crypto-only filter and search again to see those options."
-                        : "Try another category or one of the other listed countries. We won't invent a payment connection."}
+                    ))
+                  ) : (
+                    <p className="map-message">
+                      No matches with these filters. Try all categories or turn
+                      off crypto-only.
                     </p>
-                  </div>
-                )}
-                <div className="route-evidence">
-                  <Info size={16} />
-                  <p>{result.warning}</p>
+                  )}
+                  <p className="results-warning">
+                    <Info size={14} />
+                    {result.warning}
+                  </p>
+                </section>
+              ) : (
+                <div className="map-examples">
+                  <span className="commerce-eyebrow">A LITTLE INSPIRATION</span>
+                  {examples.map((example) => (
+                    <button
+                      key={example.label}
+                      disabled={busy}
+                      onClick={() => void search(example.text, true)}
+                    >
+                      <example.icon size={17} />
+                      <span>{example.label}</span>
+                      <ArrowUpRight size={15} />
+                    </button>
+                  ))}
                 </div>
-                <p className="directory-date">
-                  Curated provider directory · Reviewed {result.reviewedAt} ·
-                  Checkout terms can change
-                </p>
-              </section>
-            ) : (
-              <div className="finder-explainer">
-                <h2>A merchant route for the whole purchase.</h2>
-                <div>
-                  <article>
-                    <span>01</span>
-                    <h3>Start with your country</h3>
-                    <p>
-                      foodpanda in Pakistan. Tesco in the UK. FairPrice in
-                      Singapore. Relevant storefronts first.
-                    </p>
-                  </article>
-                  <article>
-                    <span>02</span>
-                    <h3>Check how you can pay</h3>
-                    <p>
-                      See direct NEAR options, crypto checkout candidates, or
-                      merchants needing a separate payment connection.
-                    </p>
-                  </article>
-                  <article>
-                    <span>03</span>
-                    <h3>Complete with the provider</h3>
-                    <p>
-                      Open the real store, confirm the final cart or booking,
-                      and review its payment invoice.
-                    </p>
-                  </article>
-                </div>
-              </div>
-            )}
-          </section>
-          <aside
-            ref={detailRef}
-            className="finder-side"
-            aria-label="Selected payment route"
-            aria-live="polite"
-          >
-            {selected ? (
-              <RouteDetail route={selected} />
-            ) : (
-              <div className="route-detail route-detail-empty">
-                <span className="detail-route-icon">
-                  <Route size={23} />
-                </span>
-                <span className="commerce-eyebrow">YOUR PAYMENT PATH</span>
-                <h2>
-                  A clear route.
-                  <br />
-                  Every step explained.
-                </h2>
+              )}
+              <details className="ranking-details">
+                <summary>How we find your route</summary>
                 <p>
-                  Pick a result to see the merchant, payment compatibility, and
-                  what happens next.
+                  We match country and category, prioritize merchants you name,
+                  then favor documented direct NEAR payment and other crypto
+                  checkout. Conventional stores have no connected NEAR checkout.
+                  These are curated recommendations; prices, inventory and final
+                  eligibility come from the provider. A bridge alone cannot pay
+                  a fiat-only store.
                 </p>
-                <div className="empty-flow">
-                  <span>
-                    <Wallet size={17} /> Your wallet or payment method
-                  </span>
-                  <ChevronRight size={15} />
-                  <span>
-                    <Route size={17} /> A supported checkout route
-                  </span>
-                  <ChevronRight size={15} />
-                  <span>
-                    <ShoppingBag size={17} /> Merchant confirmation
-                  </span>
-                </div>
-                <small>
-                  A bridge handles asset conversion. Checkout availability and
-                  fulfillment come from the merchant.
-                </small>
-              </div>
-            )}
-            <div className="finder-principles">
-              <ShieldCheck size={23} />
-              <h3>Evidence before execution.</h3>
-              <p>
-                Provider links and payment sources are visible. Prices, ratings,
-                and delivery times stay unknown until confirmed.
-              </p>
-              <a
-                href="https://intents.near.org/"
-                target="_blank"
-                rel="noreferrer"
+              </details>
+            </>
+          ) : selected ? (
+            <>
+              <button
+                className="back-to-matches"
+                onClick={() => setTab("explore")}
               >
-                Explore NEAR Intents <ArrowUpRight size={13} />
-              </a>
+                <ArrowLeft size={15} />
+                Back to matches
+              </button>
+              <RouteDetail route={selected} />
+              <div className="map-merchant-note">
+                <MapPin size={17} />
+                <p>
+                  {location
+                    ? `Map focus: ${location.name}. `
+                    : `${result?.countryName || "Country"} overview. `}
+                  This provider serves a market; its card is not a verified
+                  branch pin.
+                </p>
+              </div>
+              {branchBrands[selected.id] ? (
+                <div className="branch-search">
+                  <button
+                    disabled={locationBusy}
+                    onClick={() => {
+                      setTab("explore");
+                      void findPlaces(
+                        `${branchBrands[selected.id]} ${city || result?.countryName || ""}`,
+                        true,
+                      );
+                    }}
+                  >
+                    <Search size={15} />
+                    Find store locations on map
+                  </button>
+                  <small>
+                    This explicit search shares the map focus coordinates with
+                    Photon if selected. Listings do not confirm payment support.
+                  </small>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="route-empty">
+              <span>
+                <Route size={30} />
+              </span>
+              <h2>
+                Your next move,
+                <br />
+                step by step.
+              </h2>
+              <p>
+                Find a merchant in Explore, then choose a result to see its
+                payment methods and next steps.
+              </p>
+              <button onClick={() => setTab("explore")}>
+                Explore merchants <ArrowRight size={16} />
+              </button>
             </div>
-          </aside>
-        </div>
-        <details className="ranking-details">
-          <summary>How does “recommended” work?</summary>
-          <p>
-            We filter by country and category, prioritize a merchant you name,
-            then favor documented direct NEAR payment, other crypto checkout,
-            and regional storefronts. This is a routing policy over a curated
-            directory, not a live product search or a price-comparison engine.
-            International listings require confirmation for the chosen product
-            and destination. No provider checkout API is connected to this
-            finder.
-          </p>
-          <p>
-            For fiat-only stores, NEAR conversion alone cannot complete
-            checkout. A compatible card, off-ramp, or commerce integration must
-            be connected first. We do not mark those routes as
-            crypto-compatible.
-          </p>
-          <p>
-            Potential integrations to evaluate:{" "}
-            <a
-              href="https://www.crossmint.com/products/agentic-checkout"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Crossmint Agent Checkout
-            </a>{" "}
-            and{" "}
-            <a
-              href="https://docs.instacart.com/developer_platform_api/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Instacart Developer Platform
-            </a>
-            . Access and supported markets must be confirmed.
-          </p>
-        </details>
-        <footer className="commerce-footer">
-          <span>LocalAgentPay · Built for the NEAR Hackathon</span>
-          <div>
-            <a href="/demo">Simulated payment sandbox</a>
+          )}
+          <div className="map-panel-footnote">
+            <ShieldCheck size={15} />
+            <span>Evidence before execution. No funds move here.</span>
+          </div>
+          <div className="map-panel-footer">
+            <span>12 countries · 7 categories</span>
             <a
               href="https://github.com/gsas-bit23/localagentpay"
               target="_blank"
               rel="noreferrer"
             >
-              Source code <ArrowUpRight size={12} />
+              Source <ArrowUpRight size={12} />
             </a>
           </div>
-        </footer>
-      </main>
+        </div>
+      </aside>
+      <div className="map-context-chips" aria-label="Explore categories">
+        {(["groceries", "food", "shopping", "travel"] as const).map((id) => {
+          const Icon = icons[id];
+          return (
+            <button
+              key={id}
+              aria-pressed={category === id}
+              onClick={() => {
+                setCategory((value) => (value === id ? "" : id));
+                invalidate();
+                setExpanded(true);
+              }}
+            >
+              <Icon size={16} />
+              {commerceCategories.find((item) => item.id === id)!.name}
+            </button>
+          );
+        })}
+      </div>
+      <div className="map-destination-card">
+        <div className="destination-icon">
+          {location ? <MapPin size={20} /> : <Globe2 size={21} />}
+        </div>
+        <div>
+          <span>
+            {location
+              ? location.source === "gps"
+                ? "DEVICE ESTIMATE"
+                : location.source === "city-center"
+                  ? "CITY CENTER"
+                  : "MAP LOCATION"
+              : "EXPLORE YOUR NEXT POSSIBILITY"}
+          </span>
+          <strong>
+            {location?.name ||
+              activeMarket?.name ||
+              "A world of local possibilities"}
+          </strong>
+          <p>
+            {location?.address ||
+              "Choose a country. Let the map take you there."}
+          </p>
+          {location ? (
+            <small>
+              {location.coordinates[1].toFixed(5)},{" "}
+              {location.coordinates[0].toFixed(5)}
+            </small>
+          ) : null}
+        </div>
+        {location ? (
+          <button
+            aria-label="Clear map location"
+            onClick={() => {
+              locationRequestId.current++;
+              setLocationBusy(false);
+              setLocating(false);
+              setLocationError("");
+              invalidate();
+              setLocation(undefined);
+              setPlaces([]);
+              setCity("");
+              setLocationText("");
+              if (country || result?.country)
+                focusCountry((country || result?.country)!);
+              else
+                setTarget((value) => ({
+                  id: value.id + 1,
+                  kind: "world",
+                  label: "Explore the world",
+                  center: [35, 25],
+                  zoom: 2.4,
+                }));
+            }}
+          >
+            <X size={16} />
+          </button>
+        ) : (
+          <Navigation size={24} strokeWidth={1.4} />
+        )}
+      </div>
     </div>
   );
 }

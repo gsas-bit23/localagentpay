@@ -8,3 +8,7 @@ test-results/
 .playwright-cli/
 output/playwright/
 .vercel/
+.wrangler/
+dist/
+.dev.vars*
+.vinext/

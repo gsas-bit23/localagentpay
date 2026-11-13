@@ -4,6 +4,8 @@
 
 [Public source repository](https://github.com/gsas-bit23/localagentpay)
 
+**[Open the live Cloudflare demo](https://localagentpay.mateen-nibtap.workers.dev)**
+
 > All merchants, prices, distances, reviews, and trust scores are fictional sample data. Confirmation is simulated in every mode. This app does not sign, transfer funds, place orders, or claim settlement.
 
 ![LocalAgentPay workspace](docs/workspace.png)
@@ -95,6 +97,32 @@ npm start
 ```
 
 The lockfile pins resolved dependencies. The optional workflow in `docs/ci.yml.example` runs the same checks. To enable it, copy it to `.github/workflows/ci.yml` using GitHub credentials with the `workflow` scope; the current publishing credential cannot enable Actions. For any Node-compatible Next.js host, use `npm ci`, `npm run build`, and `npm start` with the relevant server-only environment variables. Run behind HTTPS for remote geolocation.
+
+## Cloudflare Workers
+
+The app also builds for Workers using Cloudflare's Vinext runtime. The original Next.js commands above remain available.
+
+Deployed at **https://localagentpay.mateen-nibtap.workers.dev**. The public browser flow and API endpoints were verified after deployment. [View the deployed receipt screenshot](docs/cloudflare-live.png).
+
+```sh
+npm run build:vinext
+npm run start:vinext
+# After checking the local Worker:
+npm run deploy:vinext -- --skip-build
+```
+
+`wrangler.jsonc` pins the target account and Worker name. For your own fork, update `account_id` and `name`, then authenticate with `npx wrangler login`. The build emits `dist/client` assets and a server Worker at `dist/server/index.js`; generated files and Wrangler state are ignored by Git. No KV, database, image optimization service, or response cache is needed for this prototype.
+
+The deployed default is demo mode with fictional merchants and simulated confirmation. To configure optional live services, set secrets on the Worker rather than committing `.env` files:
+
+```sh
+npx wrangler secret put MERCHANT_BASE_ADDRESS
+npx wrangler secret put ONECLICK_JWT
+npx wrangler secret put NEAR_AI_API_KEY
+npx wrangler secret put NEAR_AI_MODEL
+```
+
+Only set the services you intend to use. Local Next.js development still reads `.env.local`; Wrangler local preview can use an ignored `.dev.vars` file. Node.js compatibility is enabled for the SDKs and server environment access.
 
 ## API examples
 

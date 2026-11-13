@@ -23,4 +23,18 @@ Verified November 13, 2026 against the local production build.
 
 Media: `workspace.png`, `payment-preview.png`, `confirmation.png`, and `demo.webm` show the actual demo-mode production build. The recording is silent. API-error testing produces an expected browser network error for the deliberate HTTP 422 response.
 
-Publication: the source is public at https://github.com/gsas-bit23/localagentpay. The current GitHub credential lacks `workflow` scope, so CI is provided as `ci.yml.example` rather than enabled. Vercel rejected project creation on the matching team with HTTP 402 `resource_creation_blocked` (team fair-use limits); no hosted URL is claimed. The X post is prepared but not published, and no hackathon submission has been made.
+Publication: the source is public at https://github.com/gsas-bit23/localagentpay. The current GitHub credential lacks `workflow` scope, so CI is provided as `ci.yml.example` rather than enabled. The X post is prepared but not published, and no hackathon submission has been made.
+
+## Cloudflare deployment
+
+Live URL: **https://localagentpay.mateen-nibtap.workers.dev**
+
+- Worker: `localagentpay`; version: `d89baa60-d9a9-429b-94e9-6a3b3c82f8cc`.
+- Built with Vinext and Cloudflare's Vite plugin; deployed with Wrangler using the existing authenticated account.
+- Seven tests, TypeScript, and the Vinext production build passed. Original Next.js scripts remain available.
+- The built local Worker passed the full browser flow with zero console errors or warnings.
+- The public URL returned HTTP 200. The deployed chat API returned 3 grocery choices; its quote API returned 0.024120 demo ETH on Ethereum → 48.00 USDC on Base.
+- The public browser completed chat → merchant selection → quote → simulated confirmation with zero console errors or warnings. Screenshot: `cloudflare-live.png`.
+- No API secrets were provisioned. The hosted app uses the same rules assistant, fictional fixtures, illustrative quotes, and simulated confirmation as the no-key local demo.
+
+The earlier Vercel deployment attempt was blocked by that team's fair-use restriction. The Cloudflare deployment succeeded independently.

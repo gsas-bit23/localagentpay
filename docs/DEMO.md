@@ -18,15 +18,17 @@ Capture at 1440×1100 or 1440×900. Keep the mode label visible. Never record en
 
 Local errands, borderless payments. 🛒
 
-LocalAgentPay turns a grocery request into local options + a NEAR Intents route: pay ETH, preview merchant USDC on Base.
+LocalAgentPay: grocery requests → local options → NEAR Intents payment previews.
 
 Fictional merchants, simulated confirmation.
 
-Demo + code: https://github.com/gsas-bit23/localagentpay
+Demo: https://localagentpay.mateen-nibtap.workers.dev
 
 @NEARProtocol #NEARHackathon
 
 Attach your recorded demo, check the final character count. This draft has not been posted.
+
+Source repository for the submission form: https://github.com/gsas-bit23/localagentpay
 
 ## Submission checklist
 

@@ -1,16 +1,18 @@
 # LocalAgentPay
 
-**Local living. Borderless payments.** A NEAR hackathon prototype that turns a natural-language errand into local merchant choices and a cross-chain payment preview.
+**Local living. Borderless payments.** A country-aware commerce route finder: describe a purchase, match real regional storefronts, and see the documented payment path before continuing with a provider.
 
 [Public source repository](https://github.com/gsas-bit23/localagentpay)
 
 **[Open the live Cloudflare demo](https://localagentpay.mateen-nibtap.workers.dev)**
 
-> All merchants, prices, distances, reviews, and trust scores are fictional sample data. Confirmation is simulated in every mode. This app does not sign, transfer funds, place orders, or claim settlement.
+> The home page recommends real providers from a curated directory across 12 countries. It does not query live product inventory, calculate final carts, execute checkout, or compare live prices. The separate `/demo` payment sandbox uses fictional merchants and simulated confirmation. No funds or orders are submitted by this app.
 
-![LocalAgentPay workspace](docs/workspace.png)
+![LocalAgentPay merchant route finder](docs/route-finder.png)
 
-[Watch the recorded demo flow](docs/demo.webm) · [Payment preview screenshot](docs/payment-preview.png) · [Simulated receipt](docs/confirmation.png)
+[Merchant route example](docs/route-shopping.png) · [Mobile route details](docs/route-mobile.png)
+
+[Watch the original sandbox recording](docs/demo.webm) · [Payment preview screenshot](docs/payment-preview.png) · [Simulated receipt](docs/confirmation.png)
 
 ## Run it
 
@@ -21,7 +23,20 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. No API keys or wallet are needed for the demo.
+Open http://127.0.0.1:3000. No API keys or wallet are needed for merchant routing.
+
+1. Choose a country or include it in your request: **Weekly groceries in Karachi under PKR 5000**.
+2. Review regional providers, payment compatibility, and the ranking explanation.
+3. Select a result to see its proposed checkout path, evidence links, and requirements.
+4. Continue on the provider to check actual stock, address eligibility, final total, and invoice.
+
+Try **Book a hotel in Dubai and pay in NEAR**, **Buy headphones in the US using crypto**, or **Recharge my mobile in Nigeria**. The crypto-only filter excludes stores without a documented crypto checkout route. Voucher suggestions are excluded.
+
+The directory includes Pakistan, India, the US, the UK, the UAE, Germany, Singapore, Nigeria, Canada, Australia, France, and Japan. Categories are groceries, food delivery, shopping, travel, mobile/connectivity, local services, and domains/hosting. Country coverage does not imply every city, item, or payment method is available. See [the commerce routing guide](docs/COMMERCE.md).
+
+## Payment sandbox
+
+Open `/demo` for the original fictional merchant and simulated payment experience:
 
 1. Keep the default city, enter your own using the location button, or share approximate browser coordinates.
 2. Click **Fill the fridge** or type **Find weekly groceries near me under $60**.
@@ -31,7 +46,7 @@ Open http://127.0.0.1:3000. No API keys or wallet are needed for the demo.
 
 Try **car service under $100** (two matches), **local gifts below $30**, or **groceries under $10** (empty state).
 
-## NEAR integration
+## NEAR integration in the sandbox
 
 The server uses the official `@defuse-protocol/one-click-sdk-typescript` package:
 
@@ -44,6 +59,8 @@ The server uses the official `@defuse-protocol/one-click-sdk-typescript` package
 - The sample `localagentpay-demo.near` refund identifier is used only to validate the dry-run schema. It is not a user wallet or a refund destination suitable for a funded swap.
 
 The integration is in `lib/near-intents.ts`; the user-controlled boundary is `app/api/quote/route.ts`. The **createPaymentIntent** tool is invoked only after explicit merchant selection, outside the LLM. The browser cannot override the merchant price or recipient.
+
+The real-provider route finder uses `/api/routes`. Its provider recommendations are separate from this sandbox. A real provider's checkout must supply an invoice before an executable conversion can be built; a fictional sandbox price is never used to quote a real merchant purchase. Travala lists NEAR directly, so that path does not insert an unnecessary bridge. Uquid's crypto payment options are candidates for conversion only after confirming its actual invoice token, chain, amount, recipient, and expiry. Conventional checkout providers are marked as having no connected NEAR payment route.
 
 ### Enable a real API preview
 
@@ -71,21 +88,26 @@ The server uses the OpenAI-compatible client requested by the project brief. It 
 ## Architecture
 
 ```text
-app/page.tsx                  App entry
+app/page.tsx                  Country-aware merchant route finder
+app/demo/page.tsx             Original simulated payment sandbox
+app/api/routes/route.ts       Validate request → country/category filter → ranked routes
 app/api/chat/route.ts         Validate request → optional NEAR AI tool → options
 app/api/location/route.ts     Structured sample location/options endpoint
 app/api/quote/route.ts        Merchant lookup → explicit demo or 1Click dry-run
 components/Chat.tsx           Chat, location, choice, and confirmation state
+components/RouteFinder.tsx    Country, category, crypto filter, routes, evidence, handoffs
 components/OptionsList.tsx    Selectable fictional merchants
 components/PaymentCard.tsx    Asset, chains, fee, expiry, simulated receipt
 lib/agent.ts                 System prompt, function schema, deterministic fallback
 lib/merchants.ts             Fictional data and budget filtering
 lib/near-intents.ts           Official 1Click SDK wrapper
 lib/validation.ts             Request validation and atomic amount conversion
+lib/commerce/                 Real provider registry, supported countries, routing policy
 tests/core.test.ts            Amount precision, filtering, input, and mode checks
+tests/routing.test.ts         Country isolation, crypto eligibility, ranking, and unknown prices
 ```
 
-The browser's chat request includes the current location, so it does not need to call the standalone location endpoint first. Sharing approximate coordinates is optional and does not alter fixture distances. No location is persisted; the server has no database. Geolocation requires HTTPS or localhost and permission; denial leaves typed-city input available.
+In the sandbox, the browser's chat request includes the current location, so it does not need to call the standalone location endpoint first. Sharing approximate coordinates is optional and does not alter fixture distances. No location is persisted; the server has no database. Geolocation requires HTTPS or localhost and permission; denial leaves typed-city input available. The route finder uses typed country/city context and does not request browser coordinates.
 
 ## Check and build
 
@@ -115,7 +137,7 @@ npm run deploy:vinext -- --skip-build
 
 `wrangler.jsonc` pins the target account and Worker name. For your own fork, update `account_id` and `name`, then authenticate with `npx wrangler login`. The build emits `dist/client` assets and a server Worker at `dist/server/index.js`; generated files and Wrangler state are ignored by Git. No KV, database, image optimization service, or response cache is needed for this prototype.
 
-The deployed default is demo mode with fictional merchants and simulated confirmation. To configure optional live services, set secrets on the Worker rather than committing `.env` files:
+The deployed home page is the real-provider route finder, with no embedded checkout execution. The `/demo` sandbox defaults to fictional merchants and simulated confirmation. To configure the sandbox's optional live services, set secrets on the Worker rather than committing `.env` files:
 
 ```sh
 npx wrangler secret put MERCHANT_BASE_ADDRESS
@@ -129,6 +151,7 @@ Only set the services you intend to use. Local Next.js development still reads `
 ## API examples
 
 ```sh
+curl -X POST http://127.0.0.1:3000/api/routes -H "Content-Type: application/json" -d '{"query":"groceries in Pakistan","cryptoOnly":false}'
 curl -X POST http://127.0.0.1:3000/api/chat -H "Content-Type: application/json" -d '{"message":"groceries under $50","location":{"city":"San Francisco"}}'
 curl -X POST http://127.0.0.1:3000/api/quote -H "Content-Type: application/json" -d '{"merchantId":"green-basket","asset":"ETH","mode":"demo"}'
 ```

@@ -1,5 +1,20 @@
 # LocalAgentPay demo and submission notes
 
+## Current merchant route finder
+
+The home page now recommends real provider handoffs across 12 countries and seven categories; it does not execute their checkout APIs. The original payment sandbox remains at `/demo`.
+
+Suggested current recording:
+
+1. Ask **Weekly groceries in Karachi under PKR 5000**. Show foodpanda / pandamart and its explicit “NEAR not connected” status. The budget is context, not a claim about live cart pricing.
+2. Ask **Book a hotel in Dubai and pay in NEAR**. Show Travala, the public payment source, and the direct NEAR invoice steps.
+3. Ask **Buy headphones in the US using crypto**. Show Newegg US and Uquid. Highlight Newegg's eligible-item and desktop-checkout restrictions.
+4. Choose **Only crypto-compatible checkout**, then ask for groceries in Pakistan. Show the empty state instead of a fabricated route.
+5. Ask for flights or domain registration. Show Alternative Airlines or Namecheap's distinct account-funding flow.
+6. Open `/demo` separately if demonstrating the SDK quote and simulated receipt. Do not present a sandbox quote as a real provider invoice.
+
+The previous silent `demo.webm` below records the original sandbox; it does not represent the new merchant route finder.
+
 The repository includes `demo.webm`, a silent screen recording of the production build's demo-mode flow, and three screenshots. It shows fictional merchant discovery, the ETH → USDC/Base preview, and simulated confirmation. It does not show a live provider quote. Add narration or record the script below for a polished submission.
 
 ## 60–90 second recording
@@ -16,11 +31,9 @@ Capture at 1440×1100 or 1440×900. Keep the mode label visible. Never record en
 
 ## X post draft
 
-Local errands, borderless payments. 🛒
+LocalAgentPay finds merchants by country and explains NEAR, crypto, or conventional checkout routes.
 
-LocalAgentPay: grocery requests → local options → NEAR Intents payment previews.
-
-Fictional merchants, simulated confirmation.
+12 countries. Direct purchases, no voucher suggestions. Separate payment sandbox.
 
 Demo: https://localagentpay.mateen-nibtap.workers.dev
 

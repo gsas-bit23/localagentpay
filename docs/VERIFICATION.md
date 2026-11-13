@@ -29,7 +29,7 @@ Publication: the source is public at https://github.com/gsas-bit23/localagentpay
 
 Live URL: **https://localagentpay.mateen-nibtap.workers.dev**
 
-- Worker: `localagentpay`; version: `d89baa60-d9a9-429b-94e9-6a3b3c82f8cc`.
+- Initial Worker: `localagentpay`; initial version: `d89baa60-d9a9-429b-94e9-6a3b3c82f8cc`.
 - Built with Vinext and Cloudflare's Vite plugin; deployed with Wrangler using the existing authenticated account.
 - Seven tests, TypeScript, and the Vinext production build passed. Original Next.js scripts remain available.
 - The original Next.js production build also passed after migration. Type checking regenerates route definitions to avoid stale generated types when switching between Next.js and Vinext.
@@ -39,3 +39,20 @@ Live URL: **https://localagentpay.mateen-nibtap.workers.dev**
 - No API secrets were provisioned. The hosted app uses the same rules assistant, fictional fixtures, illustrative quotes, and simulated confirmation as the no-key local demo.
 
 The earlier Vercel deployment attempt was blocked by that team's fair-use restriction. The Cloudflare deployment succeeded independently.
+
+## Merchant route finder update — November 14, 2026
+
+- Home page: real-provider recommendations across 12 countries, 7 categories, and 37 provider entries. The original fictional payment flow moved to `/demo`.
+- `POST /api/routes` filters countries/categories, handles budget currency context, ranks named merchants and documented payment options, and returns sources and provider handoffs. `GET /api/routes` lists infrastructure references.
+- All 18 tests passed. Tests cover country isolation, missing/conflicting countries, crypto-only filtering, direct NEAR vs conversion paths, merchant restrictions, flight vs hotel product fit, account funding, unknown prices, voucher exclusion, and the original SDK/sandbox boundaries.
+- TypeScript and the Cloudflare/Vinext production build passed.
+- Local Worker browser flow passed for Pakistan groceries, UAE hotel/NEAR, US Newegg crypto shopping, empty crypto routes, and UK Tesco selection. Browser console: 0 errors, 0 warnings.
+- At 390px width, route selection scrolls to details and the page has no horizontal overflow.
+- The `/demo` chat → fictional merchant → quote → simulated confirmation flow still passes.
+- A real provider ID (`travala`) sent to `/api/quote` returns 404, preventing use of fictional prices or the sandbox recipient for a real purchase.
+- New media: `route-finder.png`, `route-shopping.png`, `route-mobile.png`.
+- Provider checkout APIs, live cart prices, automatic purchasing, funded invoices, and wallet transactions are not connected to the finder. Recommendations are not live lowest-price quotes. Conditional international listings require product/destination eligibility checks.
+
+The official sources and limitations are documented in `COMMERCE.md`. No real purchase was performed during verification.
+
+Deployed update: version `da506bc0-8dad-4b49-a1fe-e7b60ad9c223` at the same public Cloudflare URL. The public homepage and `/demo` return HTTP 200. Public routing API checks passed for Pakistan groceries, US crypto shopping, UAE hotel/NEAR, the empty crypto-only grocery case, and UK domain registration. The public browser rendered Newegg's regional handoff and Travala's direct NEAR option with zero console errors or warnings. Screenshot: `route-live.png`.

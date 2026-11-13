@@ -1,4 +1,4 @@
-import Chat from "@/components/Chat";
+import RouteFinder from "@/components/RouteFinder";
 export default function Home() {
-  return <Chat />;
+  return <RouteFinder />;
 }

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./commerce.css";
 export const metadata: Metadata = {
   title: "LocalAgentPay — Local living. Borderless payments.",
   description:
-    "Find your neighborhood favorites. Preview paying with your crypto through NEAR Intents. A hackathon prototype with fictional merchants and simulated confirmation.",
+    "Find regional merchants and documented payment paths across 12 countries. Compare direct NEAR, crypto checkout, and conventional options before continuing with a provider.",
 };
 export default function RootLayout({
   children,

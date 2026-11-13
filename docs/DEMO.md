@@ -1,25 +1,12 @@
 # LocalAgentPay demo and submission notes
 
-## Current map workspace
+## Current in-app travel checkout
 
-Start by selecting Pakistan and then Japan to show the animated map. Search `24.8546842, 67.0207055` for coordinate precision, or use device location and explain the reported uncertainty. On mobile, expand/collapse the floating bottom panel. Continue with merchant routing below. Map listings and online provider coverage are distinct.
+The home page now includes live BRIJ flight/hotel search, final quotes, wallet connection, optional NEAR conversion, payment submission, order status and refund/cancellation requests. Other merchants and unlisted countries are Coming soon, with no external merchant checkout buttons.
 
-## Current merchant route finder
+A current demonstration should search flights or hotels, select inventory, show final fees/property terms and an unfunded-wallet block. Do not imply a paid booking was verified. If showing browser signing with a disposable wallet, intercept submission and label it as a test. The NEAR flow currently requires a NEAR wallet plus a Solana wallet for settlement/refunds. See [IN_APP_CHECKOUT.md](IN_APP_CHECKOUT.md).
 
-The home page now recommends real provider handoffs across 12 countries and seven categories; it does not execute their checkout APIs. The original payment sandbox remains at `/demo`.
-
-Suggested current recording:
-
-1. Ask **Weekly groceries in Karachi under PKR 5000**. Show foodpanda / pandamart and its explicit “NEAR not connected” status. The budget is context, not a claim about live cart pricing.
-2. Ask **Book a hotel in Dubai and pay in NEAR**. Show Travala, the public payment source, and the direct NEAR invoice steps.
-3. Ask **Buy headphones in the US using crypto**. Show Newegg US and Uquid. Highlight Newegg's eligible-item and desktop-checkout restrictions.
-4. Choose **Crypto options only**, then ask for groceries in Pakistan. Show the empty state instead of a fabricated route.
-5. Ask for flights or domain registration. Show Alternative Airlines or Namecheap's distinct account-funding flow.
-6. Open `/demo` separately if demonstrating the SDK quote and simulated receipt. Do not present a sandbox quote as a real provider invoice.
-
-The previous silent `demo.webm` below records the original sandbox; it does not represent the new merchant route finder.
-
-The repository includes `demo.webm`, a silent screen recording of the production build's demo-mode flow, and three screenshots. It shows fictional merchant discovery, the ETH → USDC/Base preview, and simulated confirmation. It does not show a live provider quote. Add narration or record the script below for a polished submission.
+The older `demo.webm` and script below show the separate `/demo` sandbox with fictional merchants and simulated confirmation. They are historical and do not show the real travel checkout. No new social post or hackathon submission was published.
 
 ## 60–90 second recording
 

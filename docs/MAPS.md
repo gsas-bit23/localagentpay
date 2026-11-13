@@ -26,3 +26,7 @@ The default geocoder is `https://photon.komoot.io/`. Set `PHOTON_BASE_URL` to a 
 Main files: `components/MapCanvas.tsx`, `components/RouteFinder.tsx`, `lib/maps/geo.ts`, `lib/maps/photon.ts`, and `app/api/map/search/route.ts`. Camera targets and normalized locations are separate from the renderer so a future map provider can replace the map component without changing merchant/payment routing.
 
 References: [MapLibre](https://maplibre.org/), [OpenFreeMap quick start](https://openfreemap.org/quick_start/), [Photon public service and fair use](https://github.com/komoot/photon), [OpenStreetMap attribution](https://www.openstreetmap.org/copyright).
+
+## Live travel locations
+
+The checkout now shows provider-supplied hotel coordinates as actual hotel pins; these are distinct from Photon listings and city-center presets. Flight selection may focus the named destination city center, explicitly labeled as such. Unconnected retail cards are Coming soon. See [IN_APP_CHECKOUT.md](IN_APP_CHECKOUT.md) for payment and booking data flows.

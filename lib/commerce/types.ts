@@ -16,6 +16,7 @@ export type CommerceProvider = {
   travelServices?: ("flights" | "stays" | "cars" | "activities")[];
   checkoutSteps?: string[];
   excludedKeywords?: string[];
+  embeddedCheckout?: "brij";
 };
 export type CommerceRoute = CommerceProvider & {
   score: number;
@@ -23,6 +24,7 @@ export type CommerceRoute = CommerceProvider & {
   steps: string[];
   paymentLabel: string;
   actionable: boolean;
+  availability: "live" | "coming-soon";
   // A suggested settlement path is not a live swap quote or funded invoice.
   quoteStatus: "invoice-required" | "not-supported" | "discovery-only";
   destinationAsset?: string;

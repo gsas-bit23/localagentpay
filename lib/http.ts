@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
-export async function readBody(request: Request): Promise<unknown> {
+export async function readBody(
+  request: Request,
+  limit = 12000,
+): Promise<unknown> {
   const text = await request.text();
-  if (text.length > 12000) throw new Error("REQUEST_TOO_LARGE");
+  if (text.length > limit) throw new Error("REQUEST_TOO_LARGE");
   return JSON.parse(text);
 }
 export function apiError(error: unknown) {

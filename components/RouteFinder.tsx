@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   ArrowRight,
@@ -43,6 +44,10 @@ import {
   type MapTarget,
 } from "@/lib/maps/geo";
 import MapCanvas from "./MapCanvas";
+const TravelCheckout = dynamic(() => import("./TravelCheckout"), {
+  ssr: false,
+  loading: () => <p className="map-message">Opening in-app checkout…</p>,
+});
 
 const icons = {
   digital: Globe2,
@@ -84,13 +89,7 @@ const branchBrands: Record<string, string> = {
   "carrefour-fr": "Carrefour",
 };
 function routeStatus(route: CommerceRoute) {
-  return route.payment === "near"
-    ? "Direct NEAR option"
-    : route.payment === "crypto"
-      ? "Crypto option"
-      : route.handoff === "directory"
-        ? "Provider discovery"
-        : "Conventional checkout";
+  return route.availability === "live" ? "In-app checkout" : "Coming soon";
 }
 export default function RouteFinder() {
   const [country, setCountry] = useState<CountryCode | "">("");
@@ -102,8 +101,39 @@ export default function RouteFinder() {
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"explore" | "route">("explore");
+  const [tab, setTab] = useState<"explore" | "route" | "checkout">("explore");
   const [expanded, setExpanded] = useState(false);
+  const [checkoutKind, setCheckoutKind] = useState<"flight" | "hotel">("hotel");
+  useEffect(() => {
+    try {
+      if (
+        new URLSearchParams(window.location.search).has("checkout") ||
+        localStorage.getItem("localagentpay:checkout:v1")
+      )
+        setTab("checkout");
+    } catch {}
+  }, []);
+  function openCheckout(kind: "flight" | "hotel" = "hotel") {
+    setCheckoutKind(kind);
+    setTab("checkout");
+    if (!country && !result?.country) {
+      setCountry("US");
+      focusCountry("US");
+    } else if (!country && result?.country) setCountry(result.country);
+    scroll.current?.scrollTo({ top: 0 });
+  }
+  function focusCheckoutPlace(place: MapLocation) {
+    setLocation(place);
+    setPlaces([place]);
+    setTarget((value) => ({
+      id: value.id + 1,
+      kind: "location",
+      label: place.name,
+      center: place.coordinates,
+      zoom: place.source === "city-center" ? 11 : 15,
+    }));
+  }
+
   const [location, setLocation] = useState<MapLocation>();
   const [locationText, setLocationText] = useState("");
   const [places, setPlaces] = useState<MapLocation[]>([]);
@@ -395,6 +425,10 @@ export default function RouteFinder() {
     );
   }
   function selectRoute(route: CommerceRoute) {
+    if (route.embeddedCheckout === "brij") {
+      openCheckout(/\b(flight|airline)\b/i.test(query) ? "flight" : "hotel");
+      return;
+    }
     setSelectedId(route.id);
     setTab("route");
     scroll.current?.scrollTo({ top: 0 });
@@ -455,20 +489,31 @@ export default function RouteFinder() {
         </header>
         <div className="map-panel-tabs">
           <button
-            aria-pressed={tab === "explore"}
+            aria-pressed={tab !== "checkout"}
             onClick={() => setTab("explore")}
           >
             <Search size={15} /> Explore
           </button>
           <button
-            aria-pressed={tab === "route"}
-            onClick={() => setTab("route")}
+            aria-pressed={tab === "checkout"}
+            onClick={() => openCheckout()}
           >
-            <Route size={15} /> Payment route {selected ? <i /> : null}
+            <Route size={15} /> Checkout {selected ? <i /> : null}
           </button>
         </div>
         <div className="map-panel-scroll" ref={scroll}>
-          {tab === "explore" ? (
+          {tab === "checkout" ? (
+            <TravelCheckout
+              country={country || result?.country || ""}
+              city={city}
+              initialKind={checkoutKind}
+              onCountry={(code) => {
+                changeCountry(code);
+                setTab("checkout");
+              }}
+              onFocus={focusCheckoutPlace}
+            />
+          ) : tab === "explore" ? (
             <>
               <div className="map-intro">
                 <span className="commerce-eyebrow">
@@ -480,10 +525,21 @@ export default function RouteFinder() {
                   <span>Pay borderless.</span>
                 </h1>
                 <p>
-                  Find a merchant. Discover the best available path from your
-                  NEAR to your next purchase.
+                  Book flights and hotel stays right here. Pay with your wallet.
+                  More everyday merchants are coming soon.
                 </p>
               </div>
+              <button
+                className="live-checkout-entry"
+                onClick={() => openCheckout("hotel")}
+              >
+                <Plane size={18} />
+                <span>
+                  <strong>Flights & stays are live</strong>
+                  <small>Search, book and pay inside this app</small>
+                </span>
+                <ArrowRight size={17} />
+              </button>
               <div className="map-location-section">
                 <label className="field-label" htmlFor="country">
                   Where are we headed?
@@ -500,12 +556,17 @@ export default function RouteFinder() {
                     <option value="">Choose a country, or ask below</option>
                     {countries.map((item) => (
                       <option key={item.code} value={item.code}>
-                        {item.name}
+                        {item.name} · Travel
                       </option>
                     ))}
+                    <option disabled>Other countries — Coming soon</option>
                   </select>
                   <ChevronDown size={15} />
                 </div>
+                <p className="coverage-note">
+                  <strong>Flights & stays available</strong> · Other categories
+                  and unlisted countries are coming soon.
+                </p>
                 <form
                   className="location-search"
                   onSubmit={(event) => {
@@ -608,6 +669,7 @@ export default function RouteFinder() {
                     {commerceCategories.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
+                        {item.id === "travel" ? " · Live" : " · Coming soon"}
                       </option>
                     ))}
                   </select>
@@ -697,12 +759,12 @@ export default function RouteFinder() {
               <details className="ranking-details">
                 <summary>How we find your route</summary>
                 <p>
-                  We match country and category, prioritize merchants you name,
-                  then favor documented direct NEAR payment and other crypto
-                  checkout. Conventional stores have no connected NEAR checkout.
-                  These are curated recommendations; prices, inventory and final
-                  eligibility come from the provider. A bridge alone cannot pay
-                  a fiat-only store.
+                  We match country and category and prioritize working in-app
+                  checkout. BRIJ provides live flight and hotel search, quotes
+                  and wallet payment here. Other merchant integrations are
+                  coming soon. Directory ranking is not a live price comparison;
+                  final travel prices, fees, eligibility and terms come from the
+                  provider.
                 </p>
               </details>
             </>
@@ -715,7 +777,10 @@ export default function RouteFinder() {
                 <ArrowLeft size={15} />
                 Back to matches
               </button>
-              <RouteDetail route={selected} />
+              <RouteDetail
+                route={selected}
+                onTravel={() => openCheckout("hotel")}
+              />
               <div className="map-merchant-note">
                 <MapPin size={17} />
                 <p>
@@ -769,10 +834,10 @@ export default function RouteFinder() {
           )}
           <div className="map-panel-footnote">
             <ShieldCheck size={15} />
-            <span>Evidence before execution. No funds move here.</span>
+            <span>Your wallet. Your approval. Every payment.</span>
           </div>
           <div className="map-panel-footer">
-            <span>12 countries · 7 categories</span>
+            <span>Travel live · More merchants soon</span>
             <a
               href="https://github.com/gsas-bit23/localagentpay"
               target="_blank"
@@ -894,13 +959,15 @@ function RouteOption({
           <h3>{route.name}</h3>
           {index === 0 ? (
             <span className="recommended-badge">
-              {route.actionable ? "Recommended path" : "Top merchant match"}
+              {route.availability === "live"
+                ? "Available in this app"
+                : "Planned merchant"}
             </span>
           ) : null}
         </div>
         <p>{route.description}</p>
         <div className="route-option-tags">
-          <span className={`payment-status ${route.payment}`}>
+          <span className={`payment-status ${route.availability}`}>
             {routeStatus(route)}
           </span>
           <span>
@@ -916,7 +983,13 @@ function RouteOption({
   );
 }
 
-function RouteDetail({ route }: { route: CommerceRoute }) {
+function RouteDetail({
+  route,
+  onTravel,
+}: {
+  route: CommerceRoute;
+  onTravel: () => void;
+}) {
   return (
     <div className="route-detail">
       <div className="detail-top">
@@ -938,44 +1011,17 @@ function RouteDetail({ route }: { route: CommerceRoute }) {
           </p>
         ))}
       </div>
-      <ol className="detail-steps">
-        {route.steps.map((step, index) => (
-          <li key={step}>
-            <span>{index + 1}</span>
-            <p>{step}</p>
-          </li>
-        ))}
-      </ol>
-      <div className="detail-invoice">
-        <Info size={16} />
+      <div className="coming-soon-detail">
+        <span className="coming-soon-badge">Coming soon</span>
+        <h3>In-app checkout isn’t connected yet.</h3>
         <p>
-          {route.quoteStatus === "invoice-required"
-            ? "No live invoice or exchange quote yet. Confirm the exact network and amount on the provider before payment."
-            : route.quoteStatus === "discovery-only"
-              ? "Contact the business for a real estimate and accepted payment methods."
-              : "There is no connected NEAR-funded checkout for this merchant. Opening its store does not create a crypto payment."}
+          We’re waiting for a usable ordering, payment and fulfillment
+          integration for this merchant. There is no pay button or merchant
+          redirect for an unsupported checkout.
         </p>
-      </div>
-      <a
-        className="provider-cta"
-        href={route.url}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {route.handoff === "directory"
-          ? "Find local providers"
-          : "Continue on provider"}
-        <ArrowUpRight size={17} />
-      </a>
-      <div className="detail-sources">
-        <a href={route.sourceUrl} target="_blank" rel="noreferrer">
-          Provider source <ExternalLink size={11} />
-        </a>
-        {route.paymentSource && route.paymentSource !== route.sourceUrl ? (
-          <a href={route.paymentSource} target="_blank" rel="noreferrer">
-            Payment methods <ExternalLink size={11} />
-          </a>
-        ) : null}
+        <button className="provider-cta" onClick={onTravel}>
+          Explore live flights & stays <ArrowRight size={16} />
+        </button>
       </div>
       <p className="detail-caveat">{route.caveat}</p>
     </div>

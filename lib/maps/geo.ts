@@ -10,7 +10,7 @@ export type MapLocation = {
   countryCode?: string;
   city?: string;
   bounds?: MapBounds;
-  source: "photon" | "city-center" | "gps" | "coordinates";
+  source: "photon" | "city-center" | "gps" | "coordinates" | "provider";
   accuracy?: number;
   kind?: string;
 };

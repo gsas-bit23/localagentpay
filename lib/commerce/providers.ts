@@ -26,6 +26,29 @@ function storefront(
 
 export const commerceProviders: CommerceProvider[] = [
   {
+    id: "brij-travel",
+    name: "BRIJ Travel",
+    categories: ["travel"],
+    countries: "conditional",
+    travelServices: ["flights", "stays"],
+    url: "https://travel.brij.fi/",
+    sourceUrl: "https://docs.brij.fi/",
+    description:
+      "Live airline fares and hotel stays, with wallet checkout and order status inside this app.",
+    payment: "crypto",
+    paymentSource: "https://travel.brij.fi/llms.txt",
+    handoff: "storefront",
+    embeddedCheckout: "brij",
+    checkoutSteps: [
+      "Search live dates and inventory inside LocalAgentPay",
+      "Review traveller details, exact total, fees and cancellation terms",
+      "Approve Solana USDC payment; optionally convert NEAR into your own Solana wallet first",
+      "Track the provider booking and confirmation here",
+    ],
+    caveat:
+      "Free MCP search and quotes; no integration subscription or API key. Real bookings include travel costs and provider fees. Settlement and refunds use Solana USDC; NEAR funding requires a connected NEAR wallet and Solana wallet. Inventory, eligibility and property rules vary.",
+  },
+  {
     id: "newegg-us",
     name: "Newegg US",
     countries: ["US"],

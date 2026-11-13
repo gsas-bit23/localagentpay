@@ -5,7 +5,7 @@ import "./commerce.css";
 export const metadata: Metadata = {
   title: "LocalAgentPay — Local living. Borderless payments.",
   description:
-    "Find regional merchants and documented payment paths across 12 countries. Compare direct NEAR, crypto checkout, and conventional options before continuing with a provider.",
+    "Book flights and hotel stays inside the map with wallet payments and optional NEAR conversion. More merchants and countries are coming soon.",
 };
 export default function RootLayout({
   children,

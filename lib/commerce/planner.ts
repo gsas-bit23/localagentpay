@@ -116,7 +116,7 @@ export function inferCountry(
     );
   if (unsupported)
     throw new Error(
-      `${unsupported[1]} is not in the current country directory. Choose one of the listed countries; availability is not inferred from a neighboring market.`,
+      `${unsupported[1]} is not in the current country directory — Coming soon. Choose one of the listed countries; availability is not inferred from a neighboring market.`,
     );
   if (selected) {
     if (strong.length === 1 && strong[0].code !== selected)
@@ -306,9 +306,19 @@ export function planCommerce(
       return {
         ...provider,
         ...paymentRoute(provider),
+        actionable: provider.embeddedCheckout === "brij",
+        availability:
+          provider.embeddedCheckout === "brij"
+            ? ("live" as const)
+            : ("coming-soon" as const),
+        paymentLabel:
+          provider.embeddedCheckout === "brij"
+            ? "In-app wallet checkout · USDC / NEAR funding"
+            : "Coming soon · in-app checkout unavailable",
         ...(provider.checkoutSteps ? { steps: provider.checkoutSteps } : {}),
         score:
           50 +
+          (provider.embeddedCheckout === "brij" ? 120 : 0) +
           (matchedName ? 60 : 0) +
           (regional ? 15 : 0) +
           (provider.payment === "near"
@@ -329,10 +339,10 @@ export function planCommerce(
     routes,
     budget,
     message: routes.length
-      ? `Found ${routes.length} ${routes.length === 1 ? "route" : "routes"} for ${name} in ${region.name}. ${routes[0].actionable ? "The first option has a documented crypto payment flow; review its invoice on the provider." : "These merchants match your request, but a NEAR-funded payment is not connected for them."}`
-      : `No ${request.cryptoOnly ? "documented crypto-compatible " : "listed "}${name} routes are available for ${region.name} in this directory. ${request.cryptoOnly ? "Turn off the crypto-only filter to see conventional merchant checkout options." : "Try another category. We won't substitute merchants from another country."}`,
+      ? `Found ${routes.length} ${routes.length === 1 ? "merchant" : "merchants"} for ${name} in ${region.name}. ${routes.some((route) => route.availability === "live") ? "Live travel checkout is available inside this app; exact inventory and prices are checked next." : "In-app checkout for these merchants is coming soon."}`
+      : `No ${request.cryptoOnly ? "crypto-compatible " : "listed "}${name} merchants are connected for ${region.name}. Coming soon — try live flights and hotel stays.`,
     warning:
-      "Ranked by request, country, and documented payment compatibility. Live stock, cart totals, delivery, and fees are not queried; this is not a lowest-price comparison. No orders or payments are executed by this route finder.",
+      "Live travel routes open in-app checkout. Other merchants are Coming soon. This directory does not compare live prices; travel inventory, totals, fees and eligibility are retrieved during checkout.",
     source: "curated-provider-directory",
     reviewedAt: "2026-11-14",
   };

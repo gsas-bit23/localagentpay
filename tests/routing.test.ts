@@ -37,13 +37,18 @@ test("regional storefronts differ by country and named merchants are prioritized
     "rewe-de",
   );
 });
-test("direct NEAR checkout avoids fabricating a bridge quote or merchant invoice", () => {
+test("live in-app travel ranks first and external NEAR acceptance is still coming soon", () => {
   const result = planCommerce({
     query: "Book a hotel in Dubai and pay in NEAR",
   });
   assert.equal(result.country, "AE");
-  assert.equal(result.routes[0].id, "travala");
-  assert.equal(result.routes[0].payment, "near");
+  assert.equal(result.routes[0].id, "brij-travel");
+  assert.equal(result.routes[0].availability, "live");
+  assert.equal(result.routes[0].actionable, true);
+  const travala = result.routes.find((route) => route.id === "travala")!;
+  assert.equal(travala.payment, "near");
+  assert.equal(travala.availability, "coming-soon");
+  assert.equal(travala.actionable, false);
   assert.equal(result.routes[0].quoteStatus, "invoice-required");
   assert.equal("price" in result.routes[0], false);
   assert.equal("recipient" in result.routes[0], false);
@@ -104,7 +109,7 @@ test("specific categories take precedence over generic shopping words", () => {
 test("unknown price is not represented as a quote, rating, or budget match", () => {
   const result = planCommerce({ query: "groceries under $1", country: "US" });
   assert.ok(result.routes.length > 0);
-  assert.match(result.warning, /not a lowest-price comparison/);
+  assert.match(result.warning, /does not compare live prices/);
   assert.ok(
     result.routes.every(
       (p) => !("trust" in p) && !("price" in p) && !("distance" in p),

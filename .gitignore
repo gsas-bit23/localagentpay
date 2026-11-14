@@ -14,3 +14,9 @@ dist/
 .vinext/
 
 public/maplibre/
+
+# NEAR contracts build output
+contracts/target/
+# Never commit testnet/mainnet keys
+secrets/
+*.near-credentials*

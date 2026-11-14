@@ -1,0 +1,18 @@
+{
+  "network": "testnet",
+  "rpcUrl": "https://test.rpc.fastnear.com",
+  "explorer": "https://testnet.nearblocks.io",
+  "root": "lapdemo-11140542.testnet",
+  "lapContract": "lap.lapdemo-11140542.testnet",
+  "tokenContract": "usdc.lapdemo-11140542.testnet",
+  "tokenSymbol": "tUSDC",
+  "tokenDecimals": 6,
+  "agentAccount": "agent.lapdemo-11140542.testnet",
+  "relayerAccount": "lapdemo-11140542.testnet",
+  "demoMerchants": [
+    "bakery.lapdemo-11140542.testnet",
+    "chai.lapdemo-11140542.testnet",
+    "pharmacy.lapdemo-11140542.testnet",
+    "mobile.lapdemo-11140542.testnet"
+  ]
+}

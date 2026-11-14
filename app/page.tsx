@@ -1,4 +1,4 @@
-import RouteFinder from "@/components/RouteFinder";
+import AgentApp from "@/components/AgentApp";
 export default function Home() {
-  return <RouteFinder />;
+  return <AgentApp />;
 }
